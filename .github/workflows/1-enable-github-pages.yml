@@ -1,63 +1,313 @@
-name: Step 1, Enable GitHub Pages
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原神聖遺物強化シミュレーター</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f5;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            overflow-y: auto;
+            max-height: 90vh;
+            text-align: center;
+            margin: 20px auto;
+        }
+        h1, h2, h3 {
+            color: #333;
+            font-size: 1.5em;
+        }
+        button, label {
+            margin: 10px;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result, .stats {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            background-color: #fff;
+            font-size: 16px;
+            text-align: left;
+            line-height: 1.6;
+        }
+        .artifact-image {
+            width: 100px;  
+            height: 100px; 
+            object-fit: contain;  
+            margin-top: 10px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .enhanced {
+            color: #ff6f61; /* 強化されたサブステータスの色を変更 */
+            font-weight: bold;
+            animation: highlight 1s ease-out; /* アニメーションで強調 */
+        }
+        @keyframes highlight {
+            0% {
+                background-color: transparent;
+            }
+            50% {
+                background-color: #ffecb3;
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+        /* レスポンシブデザイン */
+        @media (max-width: 768px) {
+            button {
+                font-size: 14px;
+                padding: 10px 20px;
+            }
+            .container {
+                width: 100%;
+                padding: 10px;
+            }
+            h1, h2, h3 {
+                font-size: 1.2em;
+            }
+            .result, .stats {
+                font-size: 14px;
+            }
+            .artifact-image {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
 
-# This step triggers after we run a pages build.
-# This workflow updates from step 1 to step 2.
+<body>
+    <div class="container">
+        <h2>原神聖遺物強化シミュレーター</h2>
+        <h3>スコアに入れるサブオプションを選択</h3>
+        <label><input type="radio" name="stat" id="atkCheckbox" value="atk"> 攻撃力%</label>
+        <label><input type="radio" name="stat" id="defCheckbox" value="def"> 防御力%</label>
+        <label><input type="radio" name="stat" id="emCheckbox" value="em"> 元素熟知</label>
+        <label><input type="radio" name="stat" id="hpCheckbox" value="hp"> HP%</label><br><br>
+        <button onclick="enhance()" disabled id="enhanceButton">+4ずつ強化</button>
+        <button onclick="getRandomArtifact()">聖遺物を取得</button>
+        <div id="artifact" class="result">
+            <div class="result-title">聖遺物</div>
+            <div><img id="artifactImage" class="artifact-image" src="" alt="聖遺物の画像"></div>
+        </div>
+        <div id="mainstat" class="stats">
+            <div class="result-title">メインステータス</div>
+            <div>なし</div>
+        </div>
+        <div id="substats" class="stats">
+            <div class="result-title">サブステータス</div>
+            <div>なし</div>
+        </div>
 
-# This will run every time we run a pages build.
-# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows
-on:
-  workflow_dispatch:
-  page_build:
+        <div id="result" class="result">
+            <div class="result-title">強化状態</div>
+            <div>+0</div>
+        </div>
+        <div id="score" class="result">
+            <div class="result-title">スコア</div>
+            <div>0</div>
+        </div>
+    </div>
 
-# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
-permissions:
-  # Need `contents: read` to checkout the repository.
-  # Need `contents: write` to update the step metadata.
-  contents: write
+    <script>
+        const artifacts = ["花", "羽", "時計", "杯", "冠"];
+        const artifactImages = {
+        "花": "https://cdn.wikiwiki.jp/to/w/genshinwiki/%E3%83%90%E3%83%83%E3%82%B0/%E8%81%96%E9%81%BA%E7%89%A9/::ref/%E5%89%A3%E9%97%98%E5%A3%AB%E3%81%AE%E6%9C%AA%E7%B7%B4.png.webp?rev=aaea050c5b83c3ef7fbecf51a42a2f95&t=20210109182605",
+        "羽": "https://cdn.wikiwiki.jp/to/w/genshinwiki/%E3%83%90%E3%83%83%E3%82%B0/%E8%81%96%E9%81%BA%E7%89%A9/::ref/%E5%89%A3%E9%97%98%E5%A3%AB%E3%81%AE%E5%B8%B0%E7%9D%80.png.webp?rev=71bb039d93a04e38a0a2e89f2d2ec1cc&t=20210109182600",
+        "時計": "https://cdn.wikiwiki.jp/to/w/genshinwiki/%E3%83%90%E3%83%83%E3%82%B0/%E8%81%96%E9%81%BA%E7%89%A9/::ref/%E5%89%A3%E9%97%98%E5%A3%AB%E3%81%AE%E5%B8%8C%E6%9C%9B.png.webp?rev=90af8d6c118b2b1dccb0643330827ea4&t=20210109182555",
+        "杯": "https://cdn.wikiwiki.jp/to/w/genshinwiki/%E3%83%90%E3%83%83%E3%82%B0/%E8%81%96%E9%81%BA%E7%89%A9/::ref/%E5%89%A3%E9%97%98%E5%A3%AB%E3%81%AE%E9%85%A9%E9%85%8A.png.webp?rev=11fa4659a09a2d147b83ecf291213cc8&t=20210109182610",
+        "冠": "https://cdn.wikiwiki.jp/to/w/genshinwiki/%E3%83%90%E3%83%83%E3%82%B0/%E8%81%96%E9%81%BA%E7%89%A9/::ref/%E5%89%A3%E9%97%98%E5%A3%AB%E3%81%AE%E5%87%B1%E6%97%8B.png.webp?rev=76927e29c275f892f8800de12c6d82f5&t=20210109182550"
+    };
+        const subStatValues = {
+            "攻撃力%": [4.1, 4.7, 5.3, 5.8],
+            "防御力%": [5.1, 5.8, 6.6, 7.3],
+            "HP%": [4.1, 4.7, 5.3, 5.8],
+            "元素熟知": [16, 19, 21, 23],
+            "会心率": [2.7, 3.1, 3.5, 3.9],
+            "会心ダメージ": [5.4, 6.2, 7.0, 7.8],
+            "チャージ効率": [4.5, 5.2, 5.8, 6.5]
+        };
+        let currentArtifact = null;
+        let mainStat = "";
+        let subStats = {};
+        let subStatEnhanceCount = {};
+        let enhancementLevel = 0;
 
-jobs:
-  # Get the current step to only run the main job when the learner is on the same step.
-  get_current_step:
-    name: Check current step number
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - id: get_step
-        run: |
-          echo "current_step=$(cat ./.github/steps/-step.txt)" >> $GITHUB_OUTPUT
-    outputs:
-      current_step: ${{ steps.get_step.outputs.current_step }}
+        function getRandomArtifact() {
+            currentArtifact = artifacts[Math.floor(Math.random() * artifacts.length)];
+            mainStat = getMainStat(currentArtifact);
+            subStats = getInitialSubStats();
+            subStatEnhanceCount = Object.fromEntries(Object.keys(subStats).map(key => [key, 0]));
+            enhancementLevel = 0;
+            document.getElementById('artifactImage').src = artifactImages[currentArtifact];
+            updateDisplay();
+            document.getElementById('enhanceButton').disabled = false;
+            updateScore();
+        }
 
-  on_enable_github_pages:
-    name: On enable github pages
-    needs: get_current_step
+        function getMainStat(artifact) {
+            const mainStats = {
+                "花": "HP",
+                "羽": "攻撃力",
+                "時計": ["攻撃力%", "HP%", "防御力%", "元素チャージ効率", "元素熟知"],
+                "杯": ["炎元素ダメージ%", "水元素ダメージ%", "雷元素ダメージ%", "氷元素ダメージ%", "物理ダメージ%"],
+                "冠": ["会心率", "会心ダメージ", "治癒効果%"]
+            };
+            const statOptions = Array.isArray(mainStats[artifact]) ? mainStats[artifact] : [mainStats[artifact]];
+            return statOptions[Math.floor(Math.random() * statOptions.length)];
+        }
 
-    # We will only run this action when:
-    # 1. This repository isn't the template repository.
-    # 2. The step is currently 1.
-    # Reference: https://docs.github.com/en/actions/learn-github-actions/contexts
-    # Reference: https://docs.github.com/en/actions/learn-github-actions/expressions
-    if: >-
-      ${{ !github.event.repository.is_template
-          && needs.get_current_step.outputs.current_step == 1 }}
+        function getInitialSubStats() {
+    const stats = ["攻撃力%", "HP%", "防御力%", "会心率", "会心ダメージ", "元素熟知", "チャージ効率"];
+    const initialStats = {};
+    const isThreeOption = Math.random() < 0.8; // 80%の確率で3オプション
+    const numberOfSubStats = isThreeOption ? 3 : 4;
 
-    # We'll run Ubuntu for performance instead of Mac or Windows.
-    runs-on: ubuntu-latest
+    while (Object.keys(initialStats).length < numberOfSubStats) {
+        const stat = stats[Math.floor(Math.random() * stats.length)];
+        if (!(stat in initialStats)) {
+            const values = subStatValues[stat];
+            initialStats[stat] = values[Math.floor(Math.random() * values.length)];
+        }
+    }
+    return initialStats;
+}
 
-    steps:
-      # We'll need to check out the repository so that we can edit the README.
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Let's get all the branches.
-          ref: my-pages
 
-      # In README.md, switch step 1 for step 2.
-      - name: Update to step 2
-        uses: skills/action-update-step@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          from_step: 1
-          to_step: 2
-          branch_name: my-pages
+function enhance() {
+    if (enhancementLevel < 20) {
+        enhancementLevel += 4;
+
+        // 3オプションの場合+4時に新しいサブオプションを追加
+        if (enhancementLevel === 4 && Object.keys(subStats).length === 3) {
+            const stats = ["攻撃力%", "HP%", "防御力%", "会心率", "会心ダメージ", "元素熟知", "チャージ効率"];
+            const availableStats = stats.filter(stat => !(stat in subStats));
+
+            if (availableStats.length > 0) {
+                const newStat = availableStats[Math.floor(Math.random() * availableStats.length)];
+                const values = subStatValues[newStat];
+                subStats[newStat] = values[Math.floor(Math.random() * values.length)];
+                subStatEnhanceCount[newStat] = 0;
+            }
+        }
+
+        const keys = Object.keys(subStats);
+        const randomKey = keys[Math.floor(Math.random() * keys.length)];
+        const increase = subStatValues[randomKey][Math.floor(Math.random() * subStatValues[randomKey].length)];
+        subStats[randomKey] = (parseFloat(subStats[randomKey]) + increase).toFixed(1);
+        subStatEnhanceCount[randomKey]++;
+        updateDisplay(randomKey);
+        updateScore();
+    }
+}
+            
+        
+
+        function updateDisplay(highlightKey = null) {
+            document.getElementById('artifact').innerHTML = `<div class="result-title">聖遺物</div><div><img id="artifactImage" class="artifact-image" src="${artifactImages[currentArtifact]}" alt="${currentArtifact}"></div>`;
+            document.getElementById('mainstat').innerHTML = `<div class="result-title">メインステータス</div><div>${mainStat}</div>`;
+            const subStatHtml = Object.entries(subStats).map(([key, value]) => {
+                const countSymbol = subStatEnhanceCount[key] > 0 ? enhanceCountSymbol(subStatEnhanceCount[key]) : "";
+                return `<div>${key}: ${value}${key.includes("%") ? "%" : ""} ${countSymbol}</div>`;
+            }).join("");
+            document.getElementById('substats').innerHTML = `<div class="result-title">サブステータス</div>${subStatHtml}`;
+            document.getElementById('result').innerHTML = `<div class="result-title">強化状態</div><div>+${enhancementLevel}</div>`;
+        }
+
+        function enhanceCountSymbol(count) {
+            return ["", "①", "②", "③", "④"][count] || "④";
+        }
+
+        function calculateScore() {
+    let score = 0;
+    const selectedStat = document.querySelector('input[name="stat"]:checked')?.value;
+
+    Object.entries(subStats).forEach(([key, value]) => {
+        if (key.includes("会心率")) {
+            score += parseFloat(value) * 2;
+        } else if (key.includes("会心ダメージ")) {
+            score += parseFloat(value);
+        } else if (selectedStat === "atk" && key.includes("攻撃力%")) {
+            score += parseFloat(value);
+        } else if (selectedStat === "def" && key.includes("防御力%")) {
+            score += parseFloat(value) * 1.1;
+        } else if (selectedStat === "em" && key.includes("元素熟知")) {
+            score += parseFloat(value) / 4;
+        } else if (selectedStat === "hp" && key.includes("HP%")) {
+            score += parseFloat(value);
+        }
+    });
+
+    return score; // 小数点そのまま返す
+}
+
+// ラジオボタン選択時にスコアを更新するリスナーを設定
+document.querySelectorAll('input[name="stat"]').forEach(radio => {
+    radio.addEventListener('change', updateScore);
+});
+
+function calculateScore() {
+    let score = 0;
+    const selectedStat = document.querySelector('input[name="stat"]:checked')?.value;
+
+    Object.entries(subStats).forEach(([key, value]) => {
+        if (key.includes("会心率")) {
+            score += parseFloat(value) * 2;
+        } else if (key.includes("会心ダメージ")) {
+            score += parseFloat(value);
+        } else if (selectedStat === "atk" && key.includes("攻撃力%")) {
+            score += parseFloat(value);
+        } else if (selectedStat === "def" && key.includes("防御力%")) {
+            score += parseFloat(value) * 1.1;
+        } else if (selectedStat === "em" && key.includes("元素熟知")) {
+            score += parseFloat(value) / 4;
+        } else if (selectedStat === "hp" && key.includes("HP%")) {
+            score += parseFloat(value);
+        }
+    });
+
+    return score; // 小数点そのまま返す
+}
+
+function updateScore() {
+    const score = calculateScore();
+    document.getElementById('score').innerHTML = `<div class="result-title">スコア</div>
+<div>${score.toFixed(1)}</div>`; // 小数点第1位まで表示
+}
+
+function updateScore() {
+    const score = calculateScore();
+    document.getElementById('score').innerHTML = `<div class="result-title">スコア</div>
+<div>${score.toFixed(1)}</div>`; // 小数点第1位まで表示
+}
+        
+    </script>
+</body>
+</html>
